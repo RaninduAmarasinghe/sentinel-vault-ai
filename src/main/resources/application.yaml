@@ -1,22 +1,21 @@
 spring:
   application:
-    name: private-data-guardian
+    name: sentinel-vault-ai
 
   ai:
     ollama:
       base-url: http://localhost:11434
       chat:
         options:
-          model: llama3      # The "Brain" for summarizing
-          temperature: 0.7   # Creativity level (0.7 is good for summaries)
+          model: llama3.2      # Using the model you requested
+          temperature: 0.4    # Lower temperature = more factual/secure answers
       embedding:
         options:
-          model: mxbai-embed-large  # High-quality local embeddings
+          model: mxbai-embed-large
 
   mongodb:
-    uri: mongodb://localhost:27017/guardian_db
+    uri: mongodb://localhost:27017/sentinel_vault_db
 
-# This allows n8n to send large files/text if needed
 server:
   port: 8080
   servlet:
