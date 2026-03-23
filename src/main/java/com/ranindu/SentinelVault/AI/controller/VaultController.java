@@ -1,6 +1,7 @@
 package com.ranindu.SentinelVault.AI.controller;
 
 
+import com.ranindu.SentinelVault.AI.dto.AnalysisResponse;
 import com.ranindu.SentinelVault.AI.dto.DocumentRequest;
 import com.ranindu.SentinelVault.AI.service.AiService;
 import org.springframework.web.bind.annotation.*;
@@ -15,13 +16,20 @@ private final AiService aiService;
 public VaultController(AiService aiService) {
     this.aiService = aiService;
 }
-@PostMapping("/analyze")
-    public String analyze(@RequestBody DocumentRequest request) {
-    return aiService.analyzeDocument(request.getContent());
-}
+    @PostMapping("/analyze")
+    public AnalysisResponse analyze(@RequestBody DocumentRequest request) {
+        return aiService.analyzeDocument(
+                request.getFileName(),
+                request.getContent()
+        );
+    }
     @PostMapping("/upload")
-    public String upload(@RequestParam("file") MultipartFile file) throws IOException {
+    public AnalysisResponse upload(@RequestParam("file") MultipartFile file) throws IOException {
         String content = new String(file.getBytes());
-        return aiService.analyzeDocument(content);
+
+        return aiService.analyzeDocument(
+                file.getOriginalFilename(),
+                content
+        );
     }
 }
