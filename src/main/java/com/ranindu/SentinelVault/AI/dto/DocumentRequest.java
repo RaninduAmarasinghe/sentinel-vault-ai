@@ -1,5 +1,6 @@
 package com.ranindu.SentinelVault.AI.dto;
 
+
 import lombok.Data;
 
 @Data
