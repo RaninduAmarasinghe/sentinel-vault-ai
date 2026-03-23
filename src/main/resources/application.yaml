@@ -7,8 +7,8 @@ spring:
       base-url: http://localhost:11434
       chat:
         options:
-          model: llama3.2      # Using the model you requested
-          temperature: 0.4    # Lower temperature = more factual/secure answers
+          model: llama3.2
+          temperature: 0.4
       embedding:
         options:
           model: mxbai-embed-large

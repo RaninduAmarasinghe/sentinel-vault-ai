@@ -1,10 +1,14 @@
 package com.ranindu.SentinelVault.AI.service;
 
+import com.ranindu.SentinelVault.AI.repository.DocumentRepository;
 import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AiService {
+    @Autowired
+    private DocumentRepository repository;
     private final OllamaChatModel chatModel;
 
     public AiService(OllamaChatModel chatModel) {
