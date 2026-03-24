@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class AiService {
@@ -26,19 +27,41 @@ public class AiService {
         }
 
         String prompt = """
-You are a local private AI system.
+You are a highly intelligent data privacy and security classification AI.
 
-You MUST return ONLY valid JSON.
-Do NOT include explanations or extra text.
+Your task is to analyze a document and determine its sensitivity level based on the presence of sensitive human data.
 
-Format:
+### Classification Rules:
+
+HIGH RISK:
+- Any medical or health-related information (diseases, diagnoses, symptoms, treatments, prescriptions, medical history)
+- Any financial information (bank accounts, transactions, card numbers, balances)
+- Any government-issued identification (NIC, passport, SSN, license numbers)
+- Any confidential personal records
+
+MEDIUM RISK:
+- Personally identifiable information (name, email, phone number, address, workplace, education details)
+- Information that can partially identify a person but is not highly sensitive
+
+LOW RISK:
+- General content with no personal, financial, or medical relevance
+- Technical, educational, or generic text
+
+### IMPORTANT INSTRUCTIONS:
+- Do NOT rely only on keywords — understand the MEANING and CONTEXT
+- Any mention of a disease or health condition (no matter what disease) should be treated as HIGH RISK
+- Do NOT classify system or technical descriptions as sensitive (e.g., "patient management system")
+- If the content contains real personal data, prioritize HIGH or MEDIUM appropriately
+- If unsure, choose the HIGHER risk level
+
+### OUTPUT FORMAT (STRICT JSON ONLY — NO EXTRA TEXT):
 {
   "summary": "...",
   "sensitiveData": ["..."],
   "riskLevel": "LOW | MEDIUM | HIGH"
 }
 
-Document:
+### DOCUMENT:
 %s
 """.formatted(content);
 
@@ -52,19 +75,25 @@ Document:
         try {
             String cleanJson;
 
-            if (aiResponse.contains("{") && aiResponse.contains("}")) {
-                cleanJson = aiResponse.substring(
-                        aiResponse.indexOf("{"),
-                        aiResponse.lastIndexOf("}") + 1
-                );
+            int start = aiResponse.indexOf("{");
+            int end = aiResponse.lastIndexOf("}");
+
+            if (start != -1 && end != -1 && end > start) {
+                cleanJson = aiResponse.substring(start, end + 1);
             } else {
-                throw new RuntimeException("Invalid AI response format: " + aiResponse);
+                // 🔥 fallback: try fixing missing closing brace
+                cleanJson = aiResponse.trim();
+                if (!cleanJson.endsWith("}")) {
+                    cleanJson = cleanJson + "}";
+                }
             }
+
+            System.out.println("CLEAN JSON: " + cleanJson); // debug
 
             response = mapper.readValue(cleanJson, AnalysisResponse.class);
 
         } catch (Exception e) {
-            e.printStackTrace(); // 🔥 IMPORTANT for debugging
+            e.printStackTrace();
             throw new RuntimeException("Failed to parse AI response: " + aiResponse);
         }
 
@@ -81,5 +110,13 @@ Document:
 
         // 🔥 4. Return structured response
         return response;
+    }
+    //History
+    public List<DocumentEntity> getAllDocuments() {
+        return repository.findAll();
+    }
+    //Filter
+    public List<DocumentEntity> getByRiskLevel(String level) {
+        return repository.findByRiskLevel(level);
     }
 }
