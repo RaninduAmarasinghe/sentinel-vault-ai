@@ -22,8 +22,14 @@ public class AiService {
     }
     public AnalysisResponse analyzeDocument(String fileName, String content) {
 
+
+        if (content == null || content.isBlank()) {
+            throw new RuntimeException("Content is empty");
+        }
+
+
         if (content.length() > 5000) {
-            throw new RuntimeException("Document is too long");
+            content = content.substring(0, 5000); // better than throwing error
         }
 
         String prompt = """

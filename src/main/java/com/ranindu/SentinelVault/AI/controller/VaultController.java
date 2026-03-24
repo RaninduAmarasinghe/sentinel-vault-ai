@@ -5,6 +5,8 @@ import com.ranindu.SentinelVault.AI.dto.AnalysisResponse;
 import com.ranindu.SentinelVault.AI.dto.DocumentRequest;
 import com.ranindu.SentinelVault.AI.entity.DocumentEntity;
 import com.ranindu.SentinelVault.AI.service.AiService;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,22 +24,33 @@ public VaultController(AiService aiService) {
 }
 
 //Analyze JSON input
-    @PostMapping("/analyze")
-    public AnalysisResponse analyze(@RequestBody DocumentRequest request) {
-        return aiService.analyzeDocument(
-                request.getFileName(),
-                request.getContent()
-        );
-    }
+@PostMapping("/analyze")
+public AnalysisResponse analyze(@RequestBody DocumentRequest request) {
+
+    System.out.println("FILE: " + request.getFileName());
+    System.out.println("CONTENT: " + request.getContent());
+
+    return aiService.analyzeDocument(
+            request.getFileName(),
+            request.getContent()
+    );
+}
 //Upload file
     @PostMapping("/upload")
     public AnalysisResponse upload(@RequestParam("file") MultipartFile file) throws IOException {
-        String content = new String(file.getBytes());
+      String fileName = file.getOriginalFilename();
+      String content;
 
-        return aiService.analyzeDocument(
-                file.getOriginalFilename(),
-                content
-        );
+      if(fileName != null && fileName.endsWith(".pdf")){
+          //extract document
+          try(PDDocument document = PDDocument.load(file.getInputStream())){
+              PDFTextStripper stripper = new PDFTextStripper();
+              content = stripper.getText(document);
+          }
+      }else {
+          content = new String(file.getBytes());
+      }
+      return aiService.analyzeDocument(fileName, content);
     }
 
 // Get history

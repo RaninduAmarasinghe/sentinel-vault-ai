@@ -17,6 +17,6 @@ spring:
     uri: mongodb://localhost:27017/sentinel_vault_db
 
 server:
-  port: 8080
+  port: 8081
   servlet:
     context-path: /api
