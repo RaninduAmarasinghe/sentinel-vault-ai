@@ -3,6 +3,7 @@ package com.ranindu.SentinelVault.AI.service;
 import com.ranindu.SentinelVault.AI.dto.AnalysisResponse;
 import com.ranindu.SentinelVault.AI.entity.DocumentEntity;
 import com.ranindu.SentinelVault.AI.repository.DocumentRepository;
+import com.ranindu.SentinelVault.AI.util.VectorUtils;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,6 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.ai.embedding.EmbeddingModel;
 import java.util.stream.Collectors;
+
+import static com.mongodb.client.model.Aggregates.limit;
+
 
 @Service
 public class AiService {
@@ -139,14 +143,45 @@ LOW RISK:
     //RAG QUESTION
     public String askQuestion(String question) {
 
+        //Embed Question
+       float[] queryArray = embeddingModel.embed(question);
+
+       List<Double> queryEmbedding = new ArrayList<>();
+       for (float v : queryArray) {
+           queryEmbedding.add((double) v);
+       }
+
+       //Get docs
         List<DocumentEntity> docs = repository.findAll();
 
-        String context = docs.stream()
-                .map(DocumentEntity::getContent)
-                .collect(Collectors.joining("\n"));
+       if(docs.isEmpty()) {
+           return "No documents found";
+       }
 
+       //Rand by similarity
+        List<DocumentEntity> topDocs = docs.stream()
+                .filter(doc -> doc.getEmbedding() != null)
+                .sorted((d1, d2) -> {
+                    double sim1 = VectorUtils.cosineSimilarity(queryEmbedding, d1.getEmbedding());
+                    double sim2 = VectorUtils.cosineSimilarity(queryEmbedding, d2.getEmbedding());
+                    return Double.compare(sim2, sim1);
+                })
+                .limit(3)
+                .toList();
+        //Build context
+        String context = topDocs.stream()
+                .map(DocumentEntity::getContent)
+                .collect(Collectors.joining("\n\n"));
+
+
+        //prompt
         String prompt = """
-Answer based on the context below.
+You are an AI assistant.
+
+Use ONLY the provided context to answer.
+If the answer is not in the context, say "Not found".
+
+Keep answers short and clear.
 
 Context:
 %s
