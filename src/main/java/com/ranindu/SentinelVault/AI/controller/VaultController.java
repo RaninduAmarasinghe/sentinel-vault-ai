@@ -65,4 +65,9 @@ public AnalysisResponse analyze(@RequestBody DocumentRequest request) {
     return aiService.getByRiskLevel(level);
     }
 
+    //RAG endpoint
+    @PostMapping("/ask")
+    public String ask(@RequestBody String question) {
+    return aiService.askQuestion(question);
+    }
 }

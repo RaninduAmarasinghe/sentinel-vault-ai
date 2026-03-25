@@ -3,23 +3,31 @@ package com.ranindu.SentinelVault.AI.service;
 import com.ranindu.SentinelVault.AI.dto.AnalysisResponse;
 import com.ranindu.SentinelVault.AI.entity.DocumentEntity;
 import com.ranindu.SentinelVault.AI.repository.DocumentRepository;
-import org.springframework.ai.ollama.OllamaChatModel;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import org.springframework.ai.embedding.EmbeddingModel;
+import java.util.stream.Collectors;
 
 @Service
 public class AiService {
-    @Autowired
-    private DocumentRepository repository;
-    private final OllamaChatModel chatModel;
 
-    public AiService(OllamaChatModel chatModel, DocumentRepository repository) {
-        this.chatModel = chatModel;
+    private final DocumentRepository repository;
+    private final ChatModel chatModel;
+    private final EmbeddingModel embeddingModel;
+
+    // Constructor Injection (clean & correct)
+    public AiService(DocumentRepository repository,
+                     ChatModel chatModel,
+                     EmbeddingModel embeddingModel) {
         this.repository = repository;
+        this.chatModel = chatModel;
+        this.embeddingModel = embeddingModel;
     }
+
     public AnalysisResponse analyzeDocument(String fileName, String content) {
 
 
@@ -71,57 +79,89 @@ LOW RISK:
 %s
 """.formatted(content);
 
-        // 🔥 1. Call AI
         String aiResponse = chatModel.call(prompt);
+        System.out.println("RAW AI RESPONSE: " + aiResponse);
 
-        // 🔥 2. Parse JSON
-        ObjectMapper mapper = new ObjectMapper();
         AnalysisResponse response;
 
         try {
-            String cleanJson;
-
             int start = aiResponse.indexOf("{");
             int end = aiResponse.lastIndexOf("}");
+            String cleanJson;
 
             if (start != -1 && end != -1 && end > start) {
                 cleanJson = aiResponse.substring(start, end + 1);
             } else {
-                // 🔥 fallback: try fixing missing closing brace
-                cleanJson = aiResponse.trim();
-                if (!cleanJson.endsWith("}")) {
-                    cleanJson = cleanJson + "}";
-                }
+                // fallback JSON (prevents crash)
+                cleanJson = """
+        {
+          "summary": "AI failed to return proper JSON",
+          "sensitiveData": ["unknown"],
+          "riskLevel": "MEDIUM"
+        }
+        """;
             }
 
-            System.out.println("CLEAN JSON: " + cleanJson); // debug
-
-            response = mapper.readValue(cleanJson, AnalysisResponse.class);
+            response = new ObjectMapper().readValue(cleanJson, AnalysisResponse.class);
 
         } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException("Failed to parse AI response: " + aiResponse);
+
+            // safe fallback (never crash)
+            response = new AnalysisResponse();
+            response.setSummary("AI parsing error");
+            response.setSensitiveData(List.of("error"));
+            response.setRiskLevel("MEDIUM");
+        }
+        //embedding
+        float[] embeddingArray = embeddingModel.embed(content);
+
+        List<Double> embedding = new ArrayList<>();
+        for (float value : embeddingArray) {
+            embedding.add((double) value);
         }
 
-        // 🔥 3. Save CLEAN data
+        //save
         DocumentEntity doc = new DocumentEntity();
         doc.setFileName(fileName);
         doc.setContent(content);
         doc.setSummary(response.getSummary());
         doc.setSensitiveData(String.join(",", response.getSensitiveData()));
         doc.setRiskLevel(response.getRiskLevel());
+        doc.setEmbedding(embedding);
         doc.setCreatedAt(LocalDateTime.now());
 
         repository.save(doc);
 
-        // 🔥 4. Return structured response
         return response;
     }
-    //History
+
+    //RAG QUESTION
+    public String askQuestion(String question) {
+
+        List<DocumentEntity> docs = repository.findAll();
+
+        String context = docs.stream()
+                .map(DocumentEntity::getContent)
+                .collect(Collectors.joining("\n"));
+
+        String prompt = """
+Answer based on the context below.
+
+Context:
+%s
+
+Question:
+%s
+""".formatted(context, question);
+
+        return chatModel.call(prompt);
+    }
+
     public List<DocumentEntity> getAllDocuments() {
         return repository.findAll();
     }
-    //Filter
+
     public List<DocumentEntity> getByRiskLevel(String level) {
         return repository.findByRiskLevel(level);
     }
