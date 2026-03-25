@@ -1,20 +1,20 @@
 package com.ranindu.SentinelVault.AI.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ranindu.SentinelVault.AI.dto.AnalysisResponse;
+import com.ranindu.SentinelVault.AI.dto.RagResponse;
+import com.ranindu.SentinelVault.AI.dto.SearchResult;
 import com.ranindu.SentinelVault.AI.entity.DocumentEntity;
 import com.ranindu.SentinelVault.AI.repository.DocumentRepository;
 import com.ranindu.SentinelVault.AI.util.VectorUtils;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.ai.embedding.EmbeddingModel;
 import java.util.stream.Collectors;
-
-import static com.mongodb.client.model.Aggregates.limit;
-
 
 @Service
 public class AiService {
@@ -23,7 +23,6 @@ public class AiService {
     private final ChatModel chatModel;
     private final EmbeddingModel embeddingModel;
 
-    // Constructor Injection (clean & correct)
     public AiService(DocumentRepository repository,
                      ChatModel chatModel,
                      EmbeddingModel embeddingModel) {
@@ -32,54 +31,51 @@ public class AiService {
         this.embeddingModel = embeddingModel;
     }
 
+    //ANALYZE DOCUMENT
     public AnalysisResponse analyzeDocument(String fileName, String content) {
 
+        System.out.println("SERVICE RECEIVED FILE: [" + fileName + "]");
 
         if (content == null || content.isBlank()) {
             throw new RuntimeException("Content is empty");
         }
 
+        //CLEAN TEXT
+        content = cleanText(content);
 
+        // LIMIT SIZE
         if (content.length() > 5000) {
-            content = content.substring(0, 5000); // better than throwing error
+            content = content.substring(0, 5000);
         }
 
+        //FIX: handle null + empty filename
+        if (fileName == null || fileName.isBlank()) {
+            fileName = "unknown.txt";
+        }
+
+        // PROMPT
         String prompt = """
 You are a highly intelligent data privacy and security classification AI.
 
-Your task is to analyze a document and determine its sensitivity level based on the presence of sensitive human data.
+Your task is to analyze a document and determine its sensitivity level.
 
-### Classification Rules:
+Rules:
+- Medical data → HIGH
+- Financial data → HIGH
+- IDs → HIGH
+- Personal info → MEDIUM
+- General text → LOW
+- If unsure → choose HIGHER
 
-HIGH RISK:
-- Any medical or health-related information (diseases, diagnoses, symptoms, treatments, prescriptions, medical history)
-- Any financial information (bank accounts, transactions, card numbers, balances)
-- Any government-issued identification (NIC, passport, SSN, license numbers)
-- Any confidential personal records
+Return ONLY JSON:
 
-MEDIUM RISK:
-- Personally identifiable information (name, email, phone number, address, workplace, education details)
-- Information that can partially identify a person but is not highly sensitive
-
-LOW RISK:
-- General content with no personal, financial, or medical relevance
-- Technical, educational, or generic text
-
-### IMPORTANT INSTRUCTIONS:
-- Do NOT rely only on keywords — understand the MEANING and CONTEXT
-- Any mention of a disease or health condition (no matter what disease) should be treated as HIGH RISK
-- Do NOT classify system or technical descriptions as sensitive (e.g., "patient management system")
-- If the content contains real personal data, prioritize HIGH or MEDIUM appropriately
-- If unsure, choose the HIGHER risk level
-
-### OUTPUT FORMAT (STRICT JSON ONLY — NO EXTRA TEXT):
 {
   "summary": "...",
   "sensitiveData": ["..."],
   "riskLevel": "LOW | MEDIUM | HIGH"
 }
 
-### DOCUMENT:
+DOCUMENT:
 %s
 """.formatted(content);
 
@@ -89,35 +85,43 @@ LOW RISK:
         AnalysisResponse response;
 
         try {
-            int start = aiResponse.indexOf("{");
-            int end = aiResponse.lastIndexOf("}");
-            String cleanJson;
+            // Extract JSON
+            String cleanJson = aiResponse.replaceAll("(?s).*?(\\{.*)", "$1");
 
-            if (start != -1 && end != -1 && end > start) {
-                cleanJson = aiResponse.substring(start, end + 1);
-            } else {
-                // fallback JSON (prevents crash)
-                cleanJson = """
-        {
-          "summary": "AI failed to return proper JSON",
-          "sensitiveData": ["unknown"],
-          "riskLevel": "MEDIUM"
-        }
-        """;
+            // Fix broken JSON (missing braces)
+            int openBraces = cleanJson.length() - cleanJson.replace("{", "").length();
+            int closeBraces = cleanJson.length() - cleanJson.replace("}", "").length();
+
+            while (closeBraces < openBraces) {
+                cleanJson += "}";
+                closeBraces++;
             }
 
-            response = new ObjectMapper().readValue(cleanJson, AnalysisResponse.class);
+            System.out.println("FIXED JSON: " + cleanJson);
+
+            // SAFE PARSE
+            try {
+                response = new ObjectMapper().readValue(cleanJson, AnalysisResponse.class);
+
+            } catch (Exception e) {
+                System.out.println("⚠️ JSON PARSE FAILED → using fallback");
+
+                response = new AnalysisResponse();
+                response.setSummary("Fallback summary");
+                response.setSensitiveData(List.of("unknown"));
+                response.setRiskLevel("MEDIUM");
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
 
-            // safe fallback (never crash)
             response = new AnalysisResponse();
-            response.setSummary("AI parsing error");
+            response.setSummary("Critical parsing error");
             response.setSensitiveData(List.of("error"));
-            response.setRiskLevel("MEDIUM");
+            response.setRiskLevel("HIGH");
         }
-        //embedding
+
+        //EMBEDDING
         float[] embeddingArray = embeddingModel.embed(content);
 
         List<Double> embedding = new ArrayList<>();
@@ -125,12 +129,19 @@ LOW RISK:
             embedding.add((double) value);
         }
 
-        //save
+        // SAVE
         DocumentEntity doc = new DocumentEntity();
         doc.setFileName(fileName);
         doc.setContent(content);
         doc.setSummary(response.getSummary());
-        doc.setSensitiveData(String.join(",", response.getSensitiveData()));
+
+        // NULL SAFE
+        doc.setSensitiveData(
+                response.getSensitiveData() != null
+                        ? String.join(",", response.getSensitiveData())
+                        : ""
+        );
+
         doc.setRiskLevel(response.getRiskLevel());
         doc.setEmbedding(embedding);
         doc.setCreatedAt(LocalDateTime.now());
@@ -139,65 +150,101 @@ LOW RISK:
 
         return response;
     }
+    //  RAG QUESTION
+    public RagResponse askQuestion(String question) {
 
-    //RAG QUESTION
-    public String askQuestion(String question) {
+        float[] queryArray = embeddingModel.embed(question);
 
-        //Embed Question
-       float[] queryArray = embeddingModel.embed(question);
+        List<Double> queryEmbedding = new ArrayList<>();
+        for (float v : queryArray) {
+            queryEmbedding.add((double) v);
+        }
 
-       List<Double> queryEmbedding = new ArrayList<>();
-       for (float v : queryArray) {
-           queryEmbedding.add((double) v);
-       }
-
-       //Get docs
         List<DocumentEntity> docs = repository.findAll();
 
-       if(docs.isEmpty()) {
-           return "No documents found";
-       }
+        if (docs.isEmpty()) {
+            return new RagResponse("No documents found", "none", 0.0);
+        }
 
-       //Rand by similarity
-        List<DocumentEntity> topDocs = docs.stream()
+        //  Find best matching doc
+        DocumentEntity bestDoc = docs.stream()
                 .filter(doc -> doc.getEmbedding() != null)
-                .sorted((d1, d2) -> {
+                .max((d1, d2) -> {
                     double sim1 = VectorUtils.cosineSimilarity(queryEmbedding, d1.getEmbedding());
                     double sim2 = VectorUtils.cosineSimilarity(queryEmbedding, d2.getEmbedding());
-                    return Double.compare(sim2, sim1);
+                    return Double.compare(sim1, sim2);
                 })
-                .limit(3)
-                .toList();
-        //Build context
-        String context = topDocs.stream()
-                .map(DocumentEntity::getContent)
-                .collect(Collectors.joining("\n\n"));
+                .orElse(null);
 
+        double confidence = VectorUtils.cosineSimilarity(queryEmbedding, bestDoc.getEmbedding());
 
-        //prompt
         String prompt = """
 You are an AI assistant.
 
-Use ONLY the provided context to answer.
-If the answer is not in the context, say "Not found".
-
-Keep answers short and clear.
+Answer ONLY using the context below.
+If not found, say "Not found".
 
 Context:
 %s
 
 Question:
 %s
-""".formatted(context, question);
+""".formatted(bestDoc.getContent(), question);
 
-        return chatModel.call(prompt);
+        String answer = chatModel.call(prompt);
+
+        return new RagResponse(
+                answer,
+                bestDoc.getFileName(),
+                confidence
+        );
     }
 
+    // SEARCH
+    public List<SearchResult> search(String query) {
+
+        float[] queryArray = embeddingModel.embed(query);
+
+        List<Double> queryEmbedding = new ArrayList<>();
+        for (float v : queryArray) {
+            queryEmbedding.add((double) v);
+        }
+
+        List<DocumentEntity> docs = repository.findAll();
+
+        return docs.stream()
+                .filter(doc -> doc.getEmbedding() != null)
+                .map(doc -> {
+                    double sim = VectorUtils.cosineSimilarity(queryEmbedding, doc.getEmbedding());
+                    return new SearchResult(
+                            doc.getFileName(),
+                            sim,
+                            doc.getContent()
+                    );
+                })
+                .sorted((a, b) -> Double.compare(b.getSimilarity(), a.getSimilarity()))
+                .limit(5)
+                .toList();
+    }
+
+    // HISTORY
     public List<DocumentEntity> getAllDocuments() {
         return repository.findAll();
     }
 
     public List<DocumentEntity> getByRiskLevel(String level) {
         return repository.findByRiskLevel(level);
+    }
+
+    // CLEAN TEXT
+    private String cleanText(String text) {
+        return text
+                .replaceAll("\\\\[a-zA-Z]+\\d*", "")
+                .replaceAll("\\{.*?\\}", "")
+                .replaceAll("(?i)helvetica|arial|timesnewroman|courier", "")
+                .replaceAll("(?i)ddirnatural|tightenfactor|cocoartf\\d*", "")
+                .replaceAll("[^a-zA-Z0-9.,:;\\-\\s]", "")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 }

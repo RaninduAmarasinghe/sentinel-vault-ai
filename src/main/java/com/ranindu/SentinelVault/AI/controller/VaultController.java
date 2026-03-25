@@ -1,8 +1,7 @@
 package com.ranindu.SentinelVault.AI.controller;
 
 
-import com.ranindu.SentinelVault.AI.dto.AnalysisResponse;
-import com.ranindu.SentinelVault.AI.dto.DocumentRequest;
+import com.ranindu.SentinelVault.AI.dto.*;
 import com.ranindu.SentinelVault.AI.entity.DocumentEntity;
 import com.ranindu.SentinelVault.AI.service.AiService;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -10,6 +9,8 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.swing.text.Document;
+import javax.swing.text.rtf.RTFEditorKit;
 import java.io.IOException;
 import java.util.List;
 
@@ -25,9 +26,9 @@ public VaultController(AiService aiService) {
 
 //Analyze JSON input
 @PostMapping("/analyze")
-public AnalysisResponse analyze(@RequestBody DocumentRequest request) {
+public AnalysisResponse analyze(@RequestBody AnalysisRequest request) {
 
-    System.out.println("FILE: " + request.getFileName());
+    System.out.println("CONTROLLER FILE: [" + request.getFileName() + "]"); // 🔥 DEBUG
     System.out.println("CONTENT: " + request.getContent());
 
     return aiService.analyzeDocument(
@@ -36,23 +37,55 @@ public AnalysisResponse analyze(@RequestBody DocumentRequest request) {
     );
 }
 //Upload file
-    @PostMapping("/upload")
-    public AnalysisResponse upload(@RequestParam("file") MultipartFile file) throws IOException {
-      String fileName = file.getOriginalFilename();
-      String content;
+@PostMapping("/upload")
+public AnalysisResponse upload(@RequestParam("file") MultipartFile file) throws IOException {
 
-      if(fileName != null && fileName.endsWith(".pdf")){
-          //extract document
-          try(PDDocument document = PDDocument.load(file.getInputStream())){
-              PDFTextStripper stripper = new PDFTextStripper();
-              content = stripper.getText(document);
-          }
-      }else {
-          content = new String(file.getBytes());
-      }
-      return aiService.analyzeDocument(fileName, content);
+    String fileName = file.getOriginalFilename();
+    String safeName = fileName != null ? fileName : "unknown.txt";
+    String lowerName = safeName.toLowerCase();
+
+    String content;
+
+    if (lowerName.endsWith(".pdf")) {
+
+        //PDF
+        try (PDDocument document = PDDocument.load(file.getInputStream())) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            content = stripper.getText(document);
+        }
+
+    } else if (lowerName.endsWith(".rtf")) {
+
+        //RTF
+        content = extractTextFromRTF(file);
+
+    } else {
+
+        //  TXT / OTHER
+        content = new String(file.getBytes());
     }
 
+    return aiService.analyzeDocument(safeName, content);
+}
+
+
+    //RTF EXTRACTOR (NEW)
+
+    private String extractTextFromRTF(MultipartFile file) {
+        try {
+            RTFEditorKit rtfParser = new RTFEditorKit();
+            Document document = rtfParser.createDefaultDocument();
+
+            try (var inputStream = file.getInputStream()) {
+                rtfParser.read(inputStream, document, 0);
+            }
+
+            return document.getText(0, document.getLength());
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse RTF file", e);
+        }
+    }
 // Get history
     @GetMapping("/history")
     public List<DocumentEntity> getHistory() {
@@ -67,7 +100,13 @@ public AnalysisResponse analyze(@RequestBody DocumentRequest request) {
 
     //RAG endpoint
     @PostMapping("/ask")
-    public String ask(@RequestBody String question) {
-    return aiService.askQuestion(question);
+    public RagResponse ask(@RequestBody QuestionRequest request) {
+        return aiService.askQuestion(request.getQuestion());
+    }
+
+    //Search
+    @GetMapping("/search")
+    public List<SearchResult> search(@RequestParam String query) {
+    return aiService.search(query);
     }
 }
