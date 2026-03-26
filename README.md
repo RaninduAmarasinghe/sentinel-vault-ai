@@ -1,6 +1,12 @@
 # 🚀 SentinelVault-AI
 Secure AI-powered document intelligence for sensitive data detection and semantic retrieval.
 
+![Java](https://img.shields.io/badge/Java-22-orange)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
+![Spring AI](https://img.shields.io/badge/AI-Spring%20AI-blue)
+![MongoDB](https://img.shields.io/badge/Database-MongoDB-green)
+![n8n](https://img.shields.io/badge/Automation-n8n-red)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 ---
 
 ## 🧠 Project Overview
