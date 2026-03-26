@@ -8,6 +8,15 @@ Secure AI-powered document intelligence for sensitive data detection and semanti
 ![n8n](https://img.shields.io/badge/Automation-n8n-red)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 ---
+## 🎯 Why This Project?
+
+Modern systems process large volumes of sensitive documents manually.  
+SentinelVault-AI automates this using AI + automation pipelines to:
+
+- Reduce manual auditing effort
+- Detect sensitive data instantly
+- Provide intelligent search over documents
+- Enable real-time risk alerts
 
 ## 🧠 Project Overview
 
@@ -21,6 +30,19 @@ SentinelVault-AI is a privacy-focused AI system that automates document analysis
 ---
 ## 📊 Architecture Diagram
 ![SentinelVault Architecture](./assets/architecture.png)
+
+## ⚡ How It Works
+
+1. Files are dropped into a monitored folder
+2. n8n workflow detects new files
+3. Files are routed based on type (PDF, TXT, RTF)
+4. Content is extracted (OCR if needed)
+5. Data is sent to Spring Boot backend
+6. AI analyzes content (LLM)
+7. Risk level + summary generated
+8. Embeddings stored in MongoDB
+9. Users can query using RAG
+
 ## ⚙️ Technical Stack
 
 **Backend**
