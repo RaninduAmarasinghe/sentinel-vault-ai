@@ -1,150 +1,191 @@
-🚀 SentinelVault-AI
-
+# 🚀 SentinelVault-AI
 Secure AI-powered document intelligence for sensitive data detection and semantic retrieval.
 
-⸻
+---
 
-🧠 Project Overview
+## 🧠 Project Overview
 
 SentinelVault-AI is a privacy-focused AI system that automates document analysis by:
-•	Detecting sensitive data (PII, financial, medical)
-•	Classifying risk levels (LOW, MEDIUM, HIGH)
-•	Generating summaries using LLMs
-•	Enabling semantic search with RAG (Retrieval-Augmented Generation)
 
-⸻
+- Detecting sensitive data (PII, financial, medical)
+- Classifying risk levels (LOW, MEDIUM, HIGH)
+- Generating summaries using LLMs
+- Enabling semantic search with RAG (Retrieval-Augmented Generation)
 
-⚙️ Technical Stack
+---
 
-Backend
-•	Java 22
-•	Spring Boot
-•	Spring AI
+## ⚙️ Technical Stack
 
-Database
-•	MongoDB (Document + Vector Storage)
+**Backend**
+- Java 22
+- Spring Boot
+- Spring AI
 
-AI & Processing
-•	LLM (Spring AI ChatModel)
-•	Embeddings for semantic search
-•	Apache PDFBox (PDF extraction)
-•	Tesseract OCR (scanned documents)
+**Database**
+- MongoDB (Document + Vector Storage)
 
-Automation
-•	n8n (workflow orchestration)
+**AI & Processing**
+- LLM (Spring AI ChatModel)
+- Embeddings for semantic search
+- Apache PDFBox (PDF extraction)
+- Tesseract OCR (scanned PDFs)
 
-⸻
+**Automation**
+- n8n (workflow orchestration)
 
-🔄 Architecture & Flow
-1.	Files are detected via n8n workflow
-2.	File types are routed (PDF, TXT, RTF)
-3.	Content is extracted (OCR fallback supported)
-4.	Data is sent to Spring Boot API
-5.	AI analyzes and classifies risk
-6.	Embeddings are generated
-7.	Data is stored in MongoDB
-8.	RAG enables intelligent querying
+---
 
-⸻
+## 🔄 Architecture & Flow
 
-🔍 Key Features
+1. Files are detected via n8n workflow
+2. File types are routed (PDF, TXT, RTF)
+3. Content is extracted (OCR fallback supported)
+4. Data is sent to Spring Boot API
+5. AI analyzes and classifies risk
+6. Embeddings are generated
+7. Data is stored in MongoDB
+8. RAG enables intelligent querying
 
-📄 Document Analysis
-•	Detects sensitive data (NIC, Email, Phone, Bank details)
-•	Generates summaries
-•	Classifies risk levels
+---
 
-🤖 AI Safety Handling
-•	Handles malformed AI responses
-•	Uses fallback parsing logic
+## 🔍 Key Features
 
-🔎 Semantic Search (RAG)
-•	Context-aware document retrieval
-•	Ask questions like:
-“Which documents contain my bank details?”
+### 📄 Document Analysis
+- Detects sensitive data (Email, Phone, Financial, Medical)
+- Generates summaries
+- Classifies risk levels
 
-🔄 Automation (n8n)
-•	Folder monitoring
-•	File-type routing
-•	API integration pipeline
+### 🤖 AI Safety Handling
+- Handles malformed AI JSON responses
+- Uses fallback parsing to prevent crashes
 
-⸻
+### 🔎 Semantic Search (RAG)
+- Context-aware document retrieval
+- Example:  
+  *“Which documents contain bank details?”*
 
-📂 Supported File Types
-•	PDF (with OCR fallback)
-•	TXT
-•	RTF
+### 🔄 Automation (n8n)
+- Folder monitoring
+- File-type routing
+- API integration pipeline
 
-⸻
+---
 
-📡 API Endpoints
+## 📂 Supported File Types
+- PDF (with OCR fallback)
+- TXT
+- RTF
 
-1. Analyze Document
+---
 
-POST /api/vault/analyze
+## 📡 API Endpoints
 
+### Analyze Document
+POST /vault/analyze
+
+```json
 {
-"fileName": "example.pdf",
-"content": "extracted text"
+  "fileName": "example.pdf",
+  "content": "extracted text"
 }
+```
 
+---
 
-⸻
+### Upload File
+POST /vault/upload
 
-2. Ask Question (RAG)
+---
 
-POST /api/vault/ask
+### Ask Question (RAG)
+POST /vault/ask
 
+```json
 {
-"question": "What sensitive data is in my documents?"
+  "question": "What sensitive data is in my documents?"
 }
+```
 
+---
 
-⸻
+### Search Documents
+GET /vault/search?query=bank
 
-🔄 n8n Workflow
+---
 
-The system includes an automated workflow:
-•	Monitors folders for new files
-•	Extracts content
-•	Sends data to backend
-•	Triggers alerts for high-risk data
+### Get All Documents
+GET /vault/history
 
-📂 Workflow file:
-/n8n-workflow/sentinelvault-workflow.json
+---
 
-⸻
+### Filter by Risk
+GET /vault/history/risk?level=HIGH
 
-🛠️ Setup
+---
 
-1. Clone repository
+### Get Document by ID
+GET /vault/history/{id}
 
+---
+
+### Delete Document
+DELETE /vault/history/{id}
+
+---
+
+### Stats (Risk Distribution)
+GET /vault/stats
+
+---
+
+## 🔄 n8n Workflow
+
+This project includes an automated workflow:
+
+- Monitors folders for new files
+- Extracts content (PDF, TXT, RTF)
+- Sends data to backend API
+- Receives AI risk classification
+- Triggers alerts for high-risk documents
+
+📂 Workflow file:  
+`/n8n-workflow/sentinelvault-workflow.json`
+
+---
+
+## 🛠️ Setup Instructions
+
+### 1. Clone repository
+```bash
 git clone https://github.com/RaninduAmarasinghe/sentinel-vault-ai.git
 cd sentinel-vault-ai
+```
 
-2. Start MongoDB
-
+### 2. Start MongoDB
+```bash
 docker run -d -p 27017:27017 mongo
+```
 
-3. Run backend
-
+### 3. Run Spring Boot backend
+```bash
 ./mvnw spring-boot:run
+```
 
-4. Run n8n
-
+### 4. Run n8n
+```bash
 npx n8n
+```
 
+---
 
-⸻
+## 🚀 Future Improvements
+- DOCX support
+- Image OCR (JPG/PNG)
+- Web dashboard (React)
+- JWT Authentication
+- Cloud deployment
 
-🚀 Future Improvements
-•	DOCX support
-•	Image OCR (JPG/PNG)
-•	Web dashboard (React)
-•	Authentication (JWT/OAuth)
+---
 
-⸻
-
-👨‍💻 Author
-
+## 👨‍💻 Author
 Ranindu Amarasinghe
