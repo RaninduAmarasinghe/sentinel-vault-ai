@@ -53,6 +53,20 @@ public class AiService {
             fileName = "unknown.txt";
         }
 
+        // ================= DUPLICATE CHECK =================
+        boolean exists = repository.existsByFileName(fileName);
+
+        if (exists) {
+            System.out.println("⚠️ File already processed: " + fileName);
+
+            // Optional: return existing response instead of saving again
+            AnalysisResponse skipResponse = new AnalysisResponse();
+            skipResponse.setSummary("File already processed");
+            skipResponse.setSensitiveData(List.of("Already exists"));
+            skipResponse.setRiskLevel("LOW");
+
+            return skipResponse;
+        }
         // PROMPT
         String prompt = """
 You are a highly intelligent data privacy and security classification AI.

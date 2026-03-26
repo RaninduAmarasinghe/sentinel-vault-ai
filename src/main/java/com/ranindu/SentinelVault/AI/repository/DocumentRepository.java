@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface DocumentRepository extends MongoRepository<DocumentEntity, String> {
     List<DocumentEntity> findByRiskLevel(String riskLevel);
+    boolean existsByFileName(String fileName);
 }

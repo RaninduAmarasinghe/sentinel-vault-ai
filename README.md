@@ -1,22 +1,33 @@
 🚀 SentinelVault-AI
+Secure AI-powered document intelligence for sensitive data detection and semantic retrieval.
 
+<<<<<<< HEAD
 SentinelVault-AI is an AI-powered document analysis system that detects sensitive data, classifies risk levels, and enables intelligent search using RAG (Retrieval-Augmented Generation).
 
 ⸻
+=======
+SentinelVault-AI is a privacy-centric system designed to automate document analysis. It bridges the gap between raw unstructured data and actionable insights by extracting text, identifying PII (Personally Identifiable Information), classifying risk, and enabling intelligent RAG-based (Retrieval-Augmented Generation) querying.
+>>>>>>> f336789 (fix: prevent duplicate documents from being stored in database)
 
 🧠 Project Overview
+Modern organizations handle massive amounts of sensitive data across various file formats. SentinelVault-AI automates the labor-intensive task of manual auditing by using LLMs to:
 
+<<<<<<< HEAD
 SentinelVault-AI is a privacy-focused system that allows users to upload documents and automatically:
 	•	Extract text from files
 	•	Detect sensitive data using AI
 	•	Classify risk levels (LOW / MEDIUM / HIGH)
 	•	Generate embeddings for semantic search
 	•	Answer questions using RAG
+=======
+Audit: Automatically detect personal, financial, and medical data.
+>>>>>>> f336789 (fix: prevent duplicate documents from being stored in database)
 
-⸻
+Classify: Assign risk levels (LOW, MEDIUM, HIGH) based on content.
 
-⚙️ Tech Stack
+Retrieve: Use vector embeddings for semantic "Ask your Data" capabilities.
 
+<<<<<<< HEAD
 Backend
 	•	Java 22
 	•	Spring Boot
@@ -33,11 +44,27 @@ Automation
 	•	n8n
 
 ⸻
+=======
+⚙️ Technical Stack
+Component	Technology
+Backend	Java 22, Spring Boot 3.x, Spring AI
+Database	MongoDB (Document Store & Vector Search)
+AI Models	LLM (via Spring AI ChatModel), Vector Embeddings
+Processing	Apache PDFBox, Tesseract OCR
+Automation	n8n (Workflow Orchestration)
+🔄 Architecture & Data Flow
+The system follows a modular pipeline designed for scalability and reliability:
 
-🔄 Architecture
+Ingestion: Files are dropped into an n8n workflow.
 
-User → n8n Workflow → File Processing → Spring Boot API → AI Analysis → MongoDB
+Routing: A Switch node routes files based on extension (.pdf, .txt, .rtf).
+>>>>>>> f336789 (fix: prevent duplicate documents from being stored in database)
 
+Extraction: Text is extracted (using OCR fallback for scanned images).
+
+Processing: The Spring Boot API receives content and coordinates with the LLM.
+
+<<<<<<< HEAD
 ⸻
 
 🔁 Processing Flow
@@ -58,11 +85,20 @@ User → n8n Workflow → File Processing → Spring Boot API → AI Analysis �
 	•	PDF (with OCR fallback)
 	•	TXT
 	•	RTF
+=======
+Analysis: The AI generates a summary, identifies sensitive entities, and calculates risk.
 
-⸻
+Persistence: Data is vectorized and stored in MongoDB for both metadata and semantic search.
 
-🔍 Features
+🔍 Key Features
+📄 Intelligent Document Analysis
+>>>>>>> f336789 (fix: prevent duplicate documents from being stored in database)
 
+PII Detection: Identifies Names, SSNs, Credit Card numbers, and Medical IDs.
+
+Risk Scoring: Categorizes documents to prioritize security reviews.
+
+<<<<<<< HEAD
 Document Analysis
 	•	Detects personal, financial, and medical data
 	•	Generates summary and sensitive data list
@@ -87,10 +123,30 @@ Automation (n8n)
 📡 API Endpoints
 
 Analyze Document
+=======
+Summarization: Provides concise overviews of long-form documents.
+
+🤖 Resilience & Safety
+
+JSON Repair: Custom logic to handle and parse "hallucinated" or malformed AI responses.
+
+Fallback OCR: Switches to Tesseract if PDFBox encounters image-only PDF pages.
+
+🔎 Semantic Search (RAG)
+
+Goes beyond keyword matching to find documents based on intent.
+
+Answers complex questions (e.g., "Which documents contain my bank details?") using context-aware retrieval.
+
+📡 API Reference
+1. Analyze Document
+>>>>>>> f336789 (fix: prevent duplicate documents from being stored in database)
 
 POST /api/vault/analyze
 
+JSON
 {
+<<<<<<< HEAD
 “fileName”: “example.pdf”,
 “content”: “text extracted from file”
 }
@@ -98,19 +154,37 @@ POST /api/vault/analyze
 ⸻
 
 Ask Question (RAG)
+=======
+"fileName": "tax_return_2025.pdf",
+"content": "Raw extracted text here..."
+}
+2. Ask Question (RAG)
+>>>>>>> f336789 (fix: prevent duplicate documents from being stored in database)
 
 POST /api/vault/ask
 
+JSON
 {
+<<<<<<< HEAD
 “question”: “What sensitive data is in my documents?”
+=======
+"question": "What is the total risk exposure across my uploaded files?"
+>>>>>>> f336789 (fix: prevent duplicate documents from being stored in database)
 }
+🛠️ Getting Started
+Prerequisites
 
+<<<<<<< HEAD
 ⸻
 
 Search Documents
+=======
+JDK 22
+>>>>>>> f336789 (fix: prevent duplicate documents from being stored in database)
 
-GET /api/vault/search?query=bank
+Docker (for MongoDB)
 
+<<<<<<< HEAD
 ⸻
 
 🗄️ Database Schema
@@ -160,3 +234,34 @@ npx n8n
 👨‍💻 Author
 
 Ranindu Amarasinghe
+=======
+Node.js (for n8n)
+
+Installation
+
+Clone the repository:
+
+Bash
+git clone https://github.com/your-username/sentinelvault-ai.git
+Launch Infrastructure:
+
+Bash
+docker run -d -p 27017:27017 --name sentinel-mongo mongo
+Start the Backend:
+
+Bash
+./mvnw spring-boot:run
+Set up Automation:
+Install n8n locally via npx n8n and import the provided workflow JSON from the /automation folder.
+
+🚀 Future Roadmap
+[ ] Extended Support: Add .docx and .xlsx parsing.
+
+[ ] Vision AI: Direct analysis of JPG/PNG screenshots.
+
+[ ] Frontend: A React-based dashboard for visual document management.
+
+[ ] Auth: Implementation of OAuth2/JWT for multi-tenant security.
+
+Author: Ranindu Amarasinghe
+>>>>>>> f336789 (fix: prevent duplicate documents from being stored in database)
