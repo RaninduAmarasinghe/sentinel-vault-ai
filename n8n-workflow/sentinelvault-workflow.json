@@ -1,0 +1,438 @@
+{
+  "name": "SentinelVault-AI",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e6a77e7e-a7e7-4636-aaf4-f8357f9001e9",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/node/.n8n-files/*",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5500f5d5-8fd4-4c70-8d4d-13451b848f5b",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $binary.data.fileExtension === \"txt\" || $binary.data.fileExtension === \"rtf\" }}",
+                    "rightValue": "txt,rtf",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "2c505111-42ab-4b3f-8b03-7e4f5331ff8f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "76a807d3-72a2-4b9d-89eb-b52ac2c89dc6",
+                    "leftValue": "={{$binary.data.fileExtension}}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        0
+      ],
+      "id": "44a15c15-19ab-4d79-b12b-c792d69ef50f",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {
+          "keepSource": "binary"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1056,
+        -112
+      ],
+      "id": "5d3650a7-ae50-47b0-8e6e-d89f2b48d61d",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {
+          "keepSource": "both"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1056,
+        112
+      ],
+      "id": "9f3fbb93-56b3-4963-ac02-7ba70cdae79d",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  return {\n    json: {\n      fileName: item.binary?.data?.fileName,\n      mimeType: item.binary?.data?.mimeType\n    },\n    binary: item.binary\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "d407a2d0-0049-4f0a-ade2-48061e3f22cf",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1584,
+        -16
+      ],
+      "id": "1a7ad9e9-9e9c-4c45-a88e-4447aa42ee16",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items\n  .map(item => {\n\n    // Extract raw content\n    let raw = item.json.text || item.json.data || item.json.content || \"\";\n\n    let clean = raw\n      .replace(/\\\\par/g, \" \")\n      .replace(/\\\\'[0-9a-fA-F]{2}/g, \"\")\n      .replace(/\\\\[a-z]+\\d*/gi, \"\")\n      .replace(/[{}]/g, \"\")\n      .replace(/\\n/g, \" \")\n      .replace(/\\s+/g, \" \")\n      .trim();\n\n    if (!clean || clean.length < 10) return null;\n\n    // 🔥 SMART FILE NAME DETECTION (FIXED)\n    let fileName = \"unknown.txt\";\n\n    // Case 1: binary exists\n    if (item.binary && item.binary.data && item.binary.data.fileName) {\n      fileName = item.binary.data.fileName;\n    }\n\n    // Case 2: metadata (PDF node)\n    else if (item.json.metadata && item.json.metadata.fileName) {\n      fileName = item.json.metadata.fileName;\n    }\n\n    // Case 3: fallback\n    else if (item.json.fileName) {\n      fileName = item.json.fileName;\n    }\n\n    // Detect type\n    const fileType = fileName.toLowerCase().endsWith(\".pdf\")\n      ? \"PDF\"\n      : \"TEXT\";\n\n    console.log(\"FINAL FILE:\", fileName);\n\n    return {\n      json: {\n        fileName,\n        fileType,\n        content: clean\n      }\n    };\n  })\n  .filter(item => item !== null);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        -16
+      ],
+      "id": "bdbbeec0-5aec-44b6-a1d1-1727cd2fac06",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8081/api/vault/analyze",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fileName\": {{$json.fileName ? JSON.stringify($json.fileName) : \"\\\"unknown.txt\\\"\"}},\n  \"content\": {{$json.content ? JSON.stringify($json.content) : \"\\\"\\\"\"}}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2048,
+        -16
+      ],
+      "id": "ea88aca7-1152-4440-854d-0d9b824e6ba0",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  json: {\n    ...$json,\n    fileName: $binary?.data?.fileName || \"unknown.txt\"\n  },\n  binary: $binary\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        -112
+      ],
+      "id": "d9f9ce26-0aff-432f-8a0f-f4588a134875",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const fileName = $json.originalFileName || \"unknown.pdf\";\nconst content = $json.text || \"\";\n\nreturn {\n  json: {\n    fileName,\n    content\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        112
+      ],
+      "id": "7edb7a92-0d67-45d3-82ff-9d53cb58b57b",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  return {\n    json: {\n      originalFileName: item.binary?.data?.fileName || \"unknown.pdf\"\n    },\n    binary: item.binary\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        112
+      ],
+      "id": "cc7998e6-a1bb-49e1-ba43-e76af874ddf1",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4465a9b0-24f9-4aeb-9ec6-a8c92f7938fa",
+              "leftValue": "={{$json.riskLevel}}",
+              "rightValue": "HIGH",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "b3ab39ad-bfe7-40f6-a14b-2c671d94fa5a",
+              "leftValue": "=",
+              "rightValue": "Combine → ANY (OR)",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2256,
+        -16
+      ],
+      "id": "04f61e0e-3f8f-4eac-9c3b-17bb413fdb6e",
+      "name": "If2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6dcf971d-ff75-404a-9daa-3a479a1e9005",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3fb7f8963a53e828a743a39f38f991bd9306f2893a016b837ea4953fd73372c6"
+  },
+  "id": "L4LqILgWQQDKKBps",
+  "tags": []
+}
