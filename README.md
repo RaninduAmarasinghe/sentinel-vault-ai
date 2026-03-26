@@ -13,7 +13,8 @@ SentinelVault-AI is a privacy-focused AI system that automates document analysis
 - Enabling semantic search with RAG (Retrieval-Augmented Generation)
 
 ---
-
+## 📊 Architecture Diagram
+![SentinelVault Architecture](./assets/architecture.png)
 ## ⚙️ Technical Stack
 
 **Backend**
