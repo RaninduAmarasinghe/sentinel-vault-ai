@@ -213,8 +213,9 @@ npx n8n
 - Web dashboard (React)
 - JWT Authentication
 - Cloud deployment
+- Whatsapp/Telegram Alerts
 
 ---
 
 ## 👨‍💻 Author
-Ranindu Amarasinghe
+Ranindu Amarasinghe 
